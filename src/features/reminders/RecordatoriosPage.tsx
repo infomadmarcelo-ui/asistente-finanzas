@@ -18,6 +18,11 @@ import { useListaRecordatorios, useRecordatoriosArchivados, type ItemRecordatori
 
 type Tab = 'recordatorios' | 'recurrencias'
 
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'recordatorios', label: 'Recordatorios' },
+  { key: 'recurrencias', label: 'Ingresos y gastos fijos' },
+]
+
 export function RecordatoriosPage() {
   const [tab, setTab] = useState<Tab>('recordatorios')
 
@@ -26,15 +31,15 @@ export function RecordatoriosPage() {
       <h1 className="text-xl font-semibold">Recordatorios</h1>
 
       <div className="flex w-fit gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-        {(['recordatorios', 'recurrencias'] as Tab[]).map((t) => (
+        {TABS.map(({ key, label }) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-md px-3 py-1.5 text-sm capitalize ${
-              tab === t ? 'bg-white shadow dark:bg-slate-700' : 'text-slate-500 dark:text-slate-400'
+            key={key}
+            onClick={() => setTab(key)}
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              tab === key ? 'bg-white shadow dark:bg-slate-700' : 'text-slate-500 dark:text-slate-400'
             }`}
           >
-            {t}
+            {label}
           </button>
         ))}
       </div>
@@ -63,8 +68,14 @@ function RecordatoriosSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={abrirNuevo}>+ Nuevo</Button>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Cargá vencimientos de pago, trámites, cumpleaños, documentos que vencen o turnos de salud, y elegí con cuántos
+          días (o, para mantenimiento de vehículos, con cuántos kilómetros) de anticipación querés que te avisemos.
+        </p>
+        <Button onClick={abrirNuevo} className="shrink-0">
+          + Nuevo
+        </Button>
       </div>
 
       {lista.length === 0 ? (

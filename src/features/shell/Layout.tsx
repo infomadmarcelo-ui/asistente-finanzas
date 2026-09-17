@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { procesarRecurrencias } from '../recurrences/recurrencesRepo'
 import { actualizarCotizacionSiEstaVieja } from '../quotes/useCotizacion'
+import { sembrarCategoriasPorDefecto } from '../categories/categoriesRepo'
 
 interface NavItem {
   to: string
@@ -33,6 +34,7 @@ const TODOS_LOS_ITEMS = [...NAV_ITEMS, ...NAV_ITEMS_SECUNDARIOS]
 
 export function Layout() {
   useEffect(() => {
+    sembrarCategoriasPorDefecto()
     procesarRecurrencias()
     actualizarCotizacionSiEstaVieja()
   }, [])
