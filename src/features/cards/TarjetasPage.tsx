@@ -11,13 +11,22 @@ import { crearCategoria } from '../categories/categoriesRepo'
 import { useCotizacionOficial } from '../quotes/useCotizacion'
 import { ResumenCarrusel } from './ResumenCarrusel'
 import { actualizarCompraCuotas, actualizarTarjeta, crearCompraCuotas, crearTarjeta, hayCuotasPagadas } from './cardsRepo'
-import { useUsoTarjetas, useVentanaResumenes } from './useTarjetas'
+import { useResumenActualPorTarjeta, useUsoTarjetas, useVentanaResumenes, type ResumenPeriodo } from './useTarjetas'
+
+const MONEDAS: Moneda[] = ['ARS', 'USD']
+
+/** "2026-11-05" -> "05/11", para mostrar un vencimiento sin ocupar tanto lugar. */
+function formatoCorto(fechaIso: string): string {
+  const [, mes, dia] = fechaIso.split('-')
+  return `${dia}/${mes}`
+}
 
 export function TarjetasPage() {
   const tarjetas = useLiveQuery(async () => (await db.tarjetas.toArray()).filter((t) => !t.archivada), []) ?? []
   const cuentas = useLiveQuery(async () => (await db.cuentas.toArray()).filter((c) => !c.archivada), []) ?? []
   const compras = useLiveQuery(() => db.comprasCuotas.toArray(), []) ?? []
   const uso = useUsoTarjetas()
+  const resumenActual = useResumenActualPorTarjeta()
   const [modalTarjeta, setModalTarjeta] = useState(false)
   const [tarjetaEditando, setTarjetaEditando] = useState<TarjetaCredito | null>(null)
   const [modalCompra, setModalCompra] = useState(false)
@@ -70,12 +79,14 @@ export function TarjetasPage() {
               key={t.id}
               tarjeta={t}
               usoInfo={uso.get(t.id)}
+              resumenActual={resumenActual.get(t.id)}
               expandida={tarjetaExpandidaId === t.id}
               onToggle={() => setTarjetaExpandidaId(tarjetaExpandidaId === t.id ? null : t.id)}
               onEditar={() => abrirEdicionTarjeta(t)}
               onEditarCompra={abrirEdicionCompra}
             />
           ))}
+          <TotalDelMes tarjetas={tarjetas} resumenActual={resumenActual} />
         </div>
       )}
 
@@ -101,9 +112,37 @@ export function TarjetasPage() {
   )
 }
 
+/** Suma, en cada moneda que tengas en uso, cuánto hay que pagar este mes entre todas
+ * las tarjetas (cada una vence en su propia fecha; esto es solo el total a la vista). */
+function TotalDelMes({ tarjetas, resumenActual }: { tarjetas: TarjetaCredito[]; resumenActual: Map<string, ResumenPeriodo> }) {
+  if (tarjetas.length < 2) return null
+
+  const totalesPorMoneda = new Map<Moneda, number>()
+  for (const t of tarjetas) {
+    const total = resumenActual.get(t.id)?.total ?? 0
+    totalesPorMoneda.set(t.moneda, (totalesPorMoneda.get(t.moneda) ?? 0) + total)
+  }
+  const monedasConTarjetas = MONEDAS.filter((m) => totalesPorMoneda.has(m))
+  if (monedasConTarjetas.length === 0) return null
+
+  return (
+    <Card className="bg-slate-50 dark:bg-slate-900">
+      <p className="mb-1 text-sm font-medium text-slate-500 dark:text-slate-400">Total a pagar este mes (todas las tarjetas)</p>
+      <div className="flex flex-wrap gap-x-6 gap-y-1">
+        {monedasConTarjetas.map((moneda) => (
+          <p key={moneda} className="text-lg font-semibold">
+            <Money monto={totalesPorMoneda.get(moneda) ?? 0} moneda={moneda} />
+          </p>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 function TarjetaItem({
   tarjeta,
   usoInfo,
+  resumenActual,
   expandida,
   onToggle,
   onEditar,
@@ -111,6 +150,7 @@ function TarjetaItem({
 }: {
   tarjeta: TarjetaCredito
   usoInfo?: { usado: number; disponible: number }
+  resumenActual?: ResumenPeriodo
   expandida: boolean
   onToggle: () => void
   onEditar: () => void
@@ -120,6 +160,7 @@ function TarjetaItem({
   const usado = usoInfo?.usado ?? 0
   const disponible = usoInfo?.disponible ?? tarjeta.limite
   const porcentaje = tarjeta.limite > 0 ? Math.min(100, Math.round((usado / tarjeta.limite) * 100)) : 0
+  const totalEsteMes = resumenActual?.total ?? 0
 
   return (
     <Card>
@@ -136,7 +177,10 @@ function TarjetaItem({
           </div>
           <div className="mt-1 flex justify-between text-sm">
             <span>
-              Usado: <Money monto={usado} moneda={tarjeta.moneda} />
+              Resumen de este mes: <Money monto={totalEsteMes} moneda={tarjeta.moneda} />
+              {totalEsteMes > 0 && resumenActual && (
+                <span className="text-slate-400"> · vence {formatoCorto(resumenActual.vencimiento)}</span>
+              )}
             </span>
             <span className="text-slate-500 dark:text-slate-400">
               Disponible: <Money monto={disponible} moneda={tarjeta.moneda} />

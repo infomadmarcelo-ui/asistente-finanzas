@@ -106,6 +106,36 @@ function armarResumen(tarjeta: TarjetaCredito, periodo: string, lista: { cuota: 
   return { periodo, vencimiento: fechaLocalIso(vencimiento), total, estado, items }
 }
 
+/** Para cada tarjeta, el resumen del período que está acumulando ahora mismo (el que
+ * va a vencer próximo), para mostrar "cuánto tengo que pagar este mes" de un vistazo,
+ * sin tener que expandir cada tarjeta una por una. */
+export function useResumenActualPorTarjeta(): Map<string, ResumenPeriodo> {
+  const tarjetas = useLiveQuery(() => db.tarjetas.toArray(), []) ?? []
+  const compras = useLiveQuery(() => db.comprasCuotas.toArray(), []) ?? []
+  const cuotas = useLiveQuery(() => db.cuotas.toArray(), []) ?? []
+
+  return useMemo(() => {
+    const compraPorId = new Map(compras.map((c) => [c.id, c]))
+    const porTarjetaYPeriodo = new Map<string, { cuota: Cuota; compra: CompraCuotas }[]>()
+    for (const cuota of cuotas) {
+      const compra = compraPorId.get(cuota.compraId)
+      if (!compra) continue
+      const clave = `${compra.tarjetaId}|${cuota.periodo}`
+      const lista = porTarjetaYPeriodo.get(clave) ?? []
+      lista.push({ cuota, compra })
+      porTarjetaYPeriodo.set(clave, lista)
+    }
+
+    const map = new Map<string, ResumenPeriodo>()
+    for (const tarjeta of tarjetas) {
+      const periodoActual = periodoToString(calcularPeriodoDeCompra(new Date(), tarjeta.diaCierre))
+      const lista = porTarjetaYPeriodo.get(`${tarjeta.id}|${periodoActual}`) ?? []
+      map.set(tarjeta.id, armarResumen(tarjeta, periodoActual, lista))
+    }
+    return map
+  }, [tarjetas, compras, cuotas])
+}
+
 export interface VentanaResumenes {
   resumenes: ResumenPeriodo[]
   indiceActual: number
