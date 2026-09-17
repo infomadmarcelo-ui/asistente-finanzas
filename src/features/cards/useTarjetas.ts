@@ -32,10 +32,12 @@ export function useUsoTarjetas(): Map<string, UsoTarjeta> {
 }
 
 export interface ItemResumen {
+  compraId: string
   descripcion: string
   numero: number
   cantidadCuotas: number
   monto: number
+  origenUsd?: CompraCuotas['origenUsd']
 }
 
 export interface ResumenPeriodo {
@@ -93,10 +95,12 @@ function armarResumen(tarjeta: TarjetaCredito, periodo: string, lista: { cuota: 
   const estado = lista.length > 0 && lista.every(({ cuota }) => cuota.estado === 'pagada') ? 'pagada' : 'pendiente'
   const items: ItemResumen[] = lista
     .map(({ cuota, compra }) => ({
+      compraId: compra.id,
       descripcion: compra.descripcion,
       numero: cuota.numero,
       cantidadCuotas: compra.cantidadCuotas,
       monto: cuota.monto,
+      origenUsd: compra.origenUsd,
     }))
     .sort((a, b) => a.descripcion.localeCompare(b.descripcion))
   return { periodo, vencimiento: fechaLocalIso(vencimiento), total, estado, items }

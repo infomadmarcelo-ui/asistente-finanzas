@@ -17,6 +17,10 @@ export async function crearTarjeta(input: NuevaTarjetaInput): Promise<void> {
   await db.tarjetas.add(tarjeta)
 }
 
+export async function actualizarTarjeta(id: string, input: NuevaTarjetaInput): Promise<void> {
+  await db.tarjetas.update(id, input)
+}
+
 export async function archivarTarjeta(id: string): Promise<void> {
   await db.tarjetas.update(id, { archivada: true })
 }
@@ -29,6 +33,7 @@ export interface NuevaCompraCuotasInput {
   montoTotal: number
   moneda: CompraCuotas['moneda']
   cantidadCuotas: number
+  origenUsd?: { montoUsd: number; cotizacion: number; recargoPct: number }
 }
 
 export async function crearCompraCuotas(input: NuevaCompraCuotasInput): Promise<void> {
@@ -45,12 +50,48 @@ export async function crearCompraCuotas(input: NuevaCompraCuotasInput): Promise<
     moneda: input.moneda,
     cantidadCuotas: input.cantidadCuotas,
     creadoEn: nowIso(),
+    origenUsd: input.origenUsd,
   }
   const cuotas = generarCuotas(compra, tarjeta)
 
   await db.transaction('rw', db.comprasCuotas, db.cuotas, async () => {
     await db.comprasCuotas.add(compra)
     await db.cuotas.bulkAdd(cuotas)
+  })
+}
+
+/** Si alguna cuota de la compra ya está pagada: editarla va a rehacer todo el
+ * cronograma, así que conviene avisarle al usuario antes de perder ese estado. */
+export async function hayCuotasPagadas(compraId: string): Promise<boolean> {
+  const cuotas = await db.cuotas.where('compraId').equals(compraId).toArray()
+  return cuotas.some((c) => c.estado === 'pagada')
+}
+
+/** Corrige una compra ya cargada (por ejemplo, si se cargó el valor de la cuota en vez
+ * del total). Como el monto y la cantidad de cuotas pueden cambiar, se rehace todo el
+ * cronograma de cuotas: cualquier cuota que ya estuviera pagada vuelve a quedar pendiente. */
+export async function actualizarCompraCuotas(id: string, input: NuevaCompraCuotasInput): Promise<void> {
+  const [compraExistente, tarjeta] = await Promise.all([db.comprasCuotas.get(id), db.tarjetas.get(input.tarjetaId)])
+  if (!compraExistente) throw new Error('Compra no encontrada')
+  if (!tarjeta) throw new Error('Tarjeta no encontrada')
+
+  const compra: CompraCuotas = {
+    ...compraExistente,
+    tarjetaId: input.tarjetaId,
+    fecha: input.fecha,
+    descripcion: input.descripcion,
+    categoriaId: input.categoriaId,
+    montoTotal: input.montoTotal,
+    moneda: input.moneda,
+    cantidadCuotas: input.cantidadCuotas,
+    origenUsd: input.origenUsd,
+  }
+  const cuotasNuevas = generarCuotas(compra, tarjeta)
+
+  await db.transaction('rw', db.comprasCuotas, db.cuotas, async () => {
+    await db.cuotas.where('compraId').equals(id).delete()
+    await db.comprasCuotas.put(compra)
+    await db.cuotas.bulkAdd(cuotasNuevas)
   })
 }
 

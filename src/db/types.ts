@@ -122,6 +122,14 @@ export interface CompraCuotas {
   moneda: Moneda
   cantidadCuotas: number
   creadoEn: string
+  /** Si se cargó como un gasto en dólares (ej: suscripción del exterior) en una
+   * tarjeta en pesos, acá queda el monto original y cómo se calculó `montoTotal`
+   * (cotización + recargo por "dólar tarjeta"), solo a modo informativo. */
+  origenUsd?: {
+    montoUsd: number
+    cotizacion: number
+    recargoPct: number
+  }
 }
 
 export type EstadoCuota = 'pendiente' | 'pagada'

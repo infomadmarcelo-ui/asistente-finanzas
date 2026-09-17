@@ -16,11 +16,13 @@ export function ResumenCarrusel({
   indiceActual,
   tarjetaId,
   moneda,
+  onEditarCompra,
 }: {
   resumenes: ResumenPeriodo[]
   indiceActual: number
   tarjetaId: string
   moneda: Moneda
+  onEditarCompra: (compraId: string) => void
 }) {
   const contenedorRef = useRef<HTMLDivElement>(null)
   const [indiceVisible, setIndiceVisible] = useState(indiceActual)
@@ -95,16 +97,30 @@ export function ResumenCarrusel({
               ) : (
                 <ul className="mb-2 max-h-40 space-y-1 overflow-y-auto text-sm">
                   {r.items.map((item, i) => (
-                    <li key={i} className="flex justify-between gap-2">
-                      <span className="truncate text-slate-600 dark:text-slate-300">
-                        {item.descripcion}
-                        {item.cantidadCuotas > 1 && (
-                          <span className="text-slate-400"> ({item.numero}/{item.cantidadCuotas})</span>
+                    <li key={i}>
+                      <button
+                        type="button"
+                        onClick={() => onEditarCompra(item.compraId)}
+                        className="flex w-full flex-col rounded px-1 py-0.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
+                        title="Editar esta compra"
+                      >
+                        <span className="flex w-full justify-between gap-2">
+                          <span className="truncate text-slate-600 dark:text-slate-300">
+                            {item.descripcion}
+                            {item.cantidadCuotas > 1 && (
+                              <span className="text-slate-400"> ({item.numero}/{item.cantidadCuotas})</span>
+                            )}
+                          </span>
+                          <span className="shrink-0">
+                            <Money monto={item.monto} moneda={moneda} />
+                          </span>
+                        </span>
+                        {item.origenUsd && (
+                          <span className="text-[11px] text-slate-400">
+                            USD {item.origenUsd.montoUsd.toLocaleString('es-AR')} · dólar ${item.origenUsd.cotizacion.toLocaleString('es-AR')} + {item.origenUsd.recargoPct}% de recargo
+                          </span>
                         )}
-                      </span>
-                      <span className="shrink-0">
-                        <Money monto={item.monto} moneda={moneda} />
-                      </span>
+                      </button>
                     </li>
                   ))}
                 </ul>
