@@ -31,11 +31,23 @@ entre las dos pestañas mientras dura la sincronización.
 
 ## Uso normal
 
-1. En la PC, con las dos apps conectadas a la misma WiFi: `npm run sync-server`
-   (o doble click en `iniciar.bat`). Dejalo abierto mientras sincronizás.
+La forma más cómoda: doble click en el acceso directo **"Asistente Personal"**
+del escritorio — prende el servidor (oculto, sin ventanas) y abre la app
+directo, como si fuera un programa instalado. Ese acceso directo apunta a
+`Abrir Asistente.vbs`; si alguna vez lo borrás sin querer, podés recrearlo
+apuntando ahí (el ícono está en `app-icon.ico`, al lado).
+
+Si preferís hacerlo a mano, o estás en otra PC:
+
+1. `npm run sync-server` (o doble click en `iniciar.bat`, que sí muestra la
+   ventana de la consola). Dejalo abierto mientras sincronizás.
 2. Abrí la app en la PC → "Sincronizar" → te muestra un QR.
 3. Abrí la app en el celular → "Sincronizar" → escanear QR.
 4. Listo — cuando termina te dice cuántos cambios se aplicaron en cada lado.
+
+El servidor queda corriendo en segundo plano incluso si cerrás la ventana de
+la app: para apagarlo de verdad, buscá "node.exe" en el Administrador de
+tareas y cerralo (o simplemente reiniciá la PC).
 
 ## Si cambia la IP de la PC
 

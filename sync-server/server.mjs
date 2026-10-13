@@ -126,6 +126,16 @@ setInterval(() => {
   }
 }, 60_000).unref()
 
+servidorHttps.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    // Ya hay un servidor corriendo (por ejemplo, lo abriste dos veces por error):
+    // no hace falta otro, el que ya está prendido sigue sirviendo igual.
+    console.log(`Ya hay un servidor de sincronización corriendo en el puerto ${PUERTO}. No hace falta abrir otro.`)
+    process.exit(0)
+  }
+  throw err
+})
+
 servidorHttps.listen(PUERTO, () => {
   console.log(`Servidor de sincronización escuchando en https://0.0.0.0:${PUERTO}`)
   console.log('Dejalo abierto mientras sincronizás. Cerrá esta ventana cuando termines.')
