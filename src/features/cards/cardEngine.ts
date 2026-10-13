@@ -1,5 +1,5 @@
 import type { CompraCuotas, Cuota, TarjetaCredito } from '../../db/types'
-import { newId, parseFechaLocal } from '../../lib/id'
+import { newId, nowIso, parseFechaLocal } from '../../lib/id'
 
 export interface Periodo {
   year: number
@@ -59,6 +59,7 @@ export function generarCuotas(compra: CompraCuotas, tarjeta: TarjetaCredito): Cu
   const valorBase = Math.round((compra.montoTotal / compra.cantidadCuotas) * 100) / 100
   const cuotas: Cuota[] = []
   let acumulado = 0
+  const generadaEn = nowIso()
 
   for (let i = 0; i < compra.cantidadCuotas; i++) {
     const esUltima = i === compra.cantidadCuotas - 1
@@ -72,6 +73,7 @@ export function generarCuotas(compra: CompraCuotas, tarjeta: TarjetaCredito): Cu
       moneda: compra.moneda,
       periodo: periodoToString(addMonths(primerPeriodo, i)),
       estado: 'pendiente',
+      actualizadoEn: generadaEn,
     })
   }
   return cuotas

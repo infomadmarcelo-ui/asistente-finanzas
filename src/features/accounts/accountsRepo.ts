@@ -16,23 +16,24 @@ export async function crearCuenta(input: CuentaInput): Promise<void> {
     ...input,
     archivada: false,
     creadoEn: nowIso(),
+    actualizadoEn: nowIso(),
   }
   await db.cuentas.add(cuenta)
 }
 
 export async function actualizarCuenta(id: string, input: CuentaInput): Promise<void> {
-  await db.cuentas.update(id, input)
+  await db.cuentas.update(id, { ...input, actualizadoEn: nowIso() })
 }
 
 /** Oculta la cuenta de las listas activas (no borra nada: sus movimientos y su
  * historial siguen intactos). Se usa para cuentas cerradas que ya no querés
  * ver en el día a día pero cuyo historial querés conservar. */
 export async function archivarCuenta(id: string): Promise<void> {
-  await db.cuentas.update(id, { archivada: true })
+  await db.cuentas.update(id, { archivada: true, actualizadoEn: nowIso() })
 }
 
 export async function desarchivarCuenta(id: string): Promise<void> {
-  await db.cuentas.update(id, { archivada: false })
+  await db.cuentas.update(id, { archivada: false, actualizadoEn: nowIso() })
 }
 
 export const TIPOS_CUENTA: { value: TipoCuenta; label: string }[] = [

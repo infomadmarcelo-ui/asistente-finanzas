@@ -27,6 +27,7 @@ export const NAV_ITEMS_SECUNDARIOS: NavItem[] = [
   { to: '/inversiones', label: 'Inversiones', icon: '📈' },
   { to: '/metas', label: 'Metas de ahorro', icon: '🎯' },
   { to: '/backup', label: 'Backup', icon: '💾' },
+  { to: '/sincronizar', label: 'Sincronizar', icon: '🔗' },
   { to: '/ayuda', label: 'Ayuda', icon: '❓' },
 ]
 

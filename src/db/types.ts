@@ -16,6 +16,9 @@ export interface Cuenta {
   saldoInicial: number
   archivada: boolean
   creadoEn: string
+  /** Cuándo se modificó por última vez (se actualiza en cada alta/edición). Se usa
+   * para fusionar datos al sincronizar entre dispositivos: gana el más reciente. */
+  actualizadoEn: string
 }
 
 export interface TarjetaCredito {
@@ -31,6 +34,7 @@ export interface TarjetaCredito {
   cuentaPagoId: string
   archivada: boolean
   creadoEn: string
+  actualizadoEn: string
 }
 
 export type TipoCategoria = 'ingreso' | 'gasto'
@@ -41,6 +45,7 @@ export interface Categoria {
   tipo: TipoCategoria
   esFijo: boolean
   archivada: boolean
+  actualizadoEn: string
 }
 
 export interface FuenteIngreso {
@@ -48,6 +53,7 @@ export interface FuenteIngreso {
   nombre: string
   recurrente: boolean
   archivada: boolean
+  actualizadoEn: string
 }
 
 export type TipoMovimiento = 'ingreso' | 'gasto' | 'transferencia'
@@ -69,6 +75,7 @@ export interface MovimientoBase {
   categoriaId?: string
   dimension?: Dimension
   creadoEn: string
+  actualizadoEn: string
 }
 
 export interface MovimientoIngreso extends MovimientoBase {
@@ -112,6 +119,14 @@ export interface MovimientoTransferencia extends MovimientoBase {
 
 export type Movimiento = MovimientoIngreso | MovimientoGasto | MovimientoTransferencia
 
+/** "Marca" de que un movimiento se borró de verdad (no archivado), para que al
+ * sincronizar entre dispositivos el borrado se respete en vez de revivir el
+ * movimiento si el otro equipo todavía lo tiene. */
+export interface MovimientoEliminado {
+  id: string
+  eliminadoEn: string
+}
+
 export interface CompraCuotas {
   id: string
   tarjetaId: string
@@ -122,6 +137,7 @@ export interface CompraCuotas {
   moneda: Moneda
   cantidadCuotas: number
   creadoEn: string
+  actualizadoEn: string
   /** Si se cargó como un gasto en dólares (ej: suscripción del exterior) en una
    * tarjeta en pesos, acá queda el monto original y cómo se calculó `montoTotal`
    * (cotización + recargo por "dólar tarjeta"), solo a modo informativo. */
@@ -144,6 +160,7 @@ export interface Cuota {
   periodo: string
   estado: EstadoCuota
   pagadaEn?: string
+  actualizadoEn: string
 }
 
 export interface Cotizacion {
@@ -166,6 +183,7 @@ export interface Vehiculo {
   odometroActual: number
   archivado: boolean
   creadoEn: string
+  actualizadoEn: string
 }
 
 export interface MetaAhorro {
@@ -177,6 +195,7 @@ export interface MetaAhorro {
   cuentaId: string
   archivada: boolean
   creadoEn: string
+  actualizadoEn: string
 }
 
 export interface Inversion {
@@ -190,6 +209,7 @@ export interface Inversion {
   cuentaOrigenId: string
   liquidada: boolean
   creadoEn: string
+  actualizadoEn: string
 }
 
 export type FrecuenciaRecurrencia = 'unica' | 'mensual' | 'anual'
@@ -224,6 +244,7 @@ export interface Recordatorio {
   completado: boolean
   archivado: boolean
   creadoEn: string
+  actualizadoEn: string
 }
 
 export interface Recurrencia {
@@ -246,6 +267,7 @@ export interface Recurrencia {
   /** El recordatorio que se crea junto con la recurrencia, para avisar del vencimiento. */
   recordatorioId?: string
   creadoEn: string
+  actualizadoEn: string
 }
 
 // --- Configuración local (candado, WebAuthn, ubicación para clima) ---

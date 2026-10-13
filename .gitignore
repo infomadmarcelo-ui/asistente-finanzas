@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Certificados locales para la sincronización por WiFi (son de esta PC
+# puntual, nunca se suben: cada uno genera los suyos con mkcert).
+sync-server/certs/

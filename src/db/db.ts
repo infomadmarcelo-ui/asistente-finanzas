@@ -11,6 +11,7 @@ import type {
   Inversion,
   MetaAhorro,
   Movimiento,
+  MovimientoEliminado,
   Recordatorio,
   Recurrencia,
   TarjetaCredito,
@@ -23,6 +24,7 @@ export class AsistenteDB extends Dexie {
   categorias!: EntityTable<Categoria, 'id'>
   fuentesIngreso!: EntityTable<FuenteIngreso, 'id'>
   movimientos!: EntityTable<Movimiento, 'id'>
+  movimientosEliminados!: EntityTable<MovimientoEliminado, 'id'>
   comprasCuotas!: EntityTable<CompraCuotas, 'id'>
   cuotas!: EntityTable<Cuota, 'id'>
   cotizaciones!: EntityTable<Cotizacion, 'id'>
@@ -56,6 +58,13 @@ export class AsistenteDB extends Dexie {
       recurrencias: 'id',
       configAuth: 'id',
       configApp: 'id',
+    })
+
+    // v2: agrega la tabla de "marcas" de movimientos borrados, necesaria para
+    // que la sincronización entre dispositivos (PC/celular) respete un borrado
+    // en vez de revivirlo. No toca ninguna tabla existente.
+    this.version(2).stores({
+      movimientosEliminados: 'id',
     })
   }
 }

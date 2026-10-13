@@ -32,7 +32,7 @@ export async function crearInversion(input: InversionInput): Promise<void> {
     antelacionDias: 3,
   })
 
-  const inversion: Inversion = { id, ...input, liquidada: false, creadoEn: ahora }
+  const inversion: Inversion = { id, ...input, liquidada: false, creadoEn: ahora, actualizadoEn: ahora }
 
   const movimiento: MovimientoTransferencia = {
     id: newId(),
@@ -46,6 +46,7 @@ export async function crearInversion(input: InversionInput): Promise<void> {
     montoDestino: input.capital,
     monedaDestino: input.moneda,
     creadoEn: ahora,
+    actualizadoEn: ahora,
   }
 
   await db.transaction('rw', db.inversiones, db.movimientos, async () => {
@@ -73,10 +74,11 @@ export async function liquidarInversion(id: string): Promise<void> {
     montoDestino: total,
     monedaDestino: inversion.moneda,
     creadoEn: ahora,
+    actualizadoEn: ahora,
   }
 
   await db.transaction('rw', db.inversiones, db.movimientos, async () => {
     await db.movimientos.add(movimiento)
-    await db.inversiones.update(id, { liquidada: true })
+    await db.inversiones.update(id, { liquidada: true, actualizadoEn: ahora })
   })
 }

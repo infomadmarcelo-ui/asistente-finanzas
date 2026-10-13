@@ -14,6 +14,7 @@ const TABLAS_BACKUP = [
   'categorias',
   'fuentesIngreso',
   'movimientos',
+  'movimientosEliminados',
   'comprasCuotas',
   'cuotas',
   'cotizaciones',

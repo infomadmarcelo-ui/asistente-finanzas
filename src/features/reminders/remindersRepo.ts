@@ -16,29 +16,31 @@ export interface RecordatorioInput {
 }
 
 export async function crearRecordatorio(input: RecordatorioInput): Promise<string> {
+  const ahora = nowIso()
   const recordatorio: Recordatorio = {
     id: newId(),
     ...input,
     completado: false,
     archivado: false,
-    creadoEn: nowIso(),
+    creadoEn: ahora,
+    actualizadoEn: ahora,
   }
   await db.recordatorios.add(recordatorio)
   return recordatorio.id
 }
 
 export async function actualizarRecordatorio(id: string, input: RecordatorioInput): Promise<void> {
-  await db.recordatorios.update(id, input)
+  await db.recordatorios.update(id, { ...input, actualizadoEn: nowIso() })
 }
 
 export async function marcarCompletado(id: string, completado: boolean): Promise<void> {
-  await db.recordatorios.update(id, { completado })
+  await db.recordatorios.update(id, { completado, actualizadoEn: nowIso() })
 }
 
 export async function archivarRecordatorio(id: string): Promise<void> {
-  await db.recordatorios.update(id, { archivado: true })
+  await db.recordatorios.update(id, { archivado: true, actualizadoEn: nowIso() })
 }
 
 export async function desarchivarRecordatorio(id: string): Promise<void> {
-  await db.recordatorios.update(id, { archivado: false })
+  await db.recordatorios.update(id, { archivado: false, actualizadoEn: nowIso() })
 }

@@ -13,16 +13,17 @@ export interface NuevaTarjetaInput {
 }
 
 export async function crearTarjeta(input: NuevaTarjetaInput): Promise<void> {
-  const tarjeta: TarjetaCredito = { id: newId(), ...input, archivada: false, creadoEn: nowIso() }
+  const ahora = nowIso()
+  const tarjeta: TarjetaCredito = { id: newId(), ...input, archivada: false, creadoEn: ahora, actualizadoEn: ahora }
   await db.tarjetas.add(tarjeta)
 }
 
 export async function actualizarTarjeta(id: string, input: NuevaTarjetaInput): Promise<void> {
-  await db.tarjetas.update(id, input)
+  await db.tarjetas.update(id, { ...input, actualizadoEn: nowIso() })
 }
 
 export async function archivarTarjeta(id: string): Promise<void> {
-  await db.tarjetas.update(id, { archivada: true })
+  await db.tarjetas.update(id, { archivada: true, actualizadoEn: nowIso() })
 }
 
 export interface NuevaCompraCuotasInput {
@@ -40,6 +41,7 @@ export async function crearCompraCuotas(input: NuevaCompraCuotasInput): Promise<
   const tarjeta = await db.tarjetas.get(input.tarjetaId)
   if (!tarjeta) throw new Error('Tarjeta no encontrada')
 
+  const ahora = nowIso()
   const compra: CompraCuotas = {
     id: newId(),
     tarjetaId: input.tarjetaId,
@@ -49,7 +51,8 @@ export async function crearCompraCuotas(input: NuevaCompraCuotasInput): Promise<
     montoTotal: input.montoTotal,
     moneda: input.moneda,
     cantidadCuotas: input.cantidadCuotas,
-    creadoEn: nowIso(),
+    creadoEn: ahora,
+    actualizadoEn: ahora,
     origenUsd: input.origenUsd,
   }
   const cuotas = generarCuotas(compra, tarjeta)
@@ -84,6 +87,7 @@ export async function actualizarCompraCuotas(id: string, input: NuevaCompraCuota
     montoTotal: input.montoTotal,
     moneda: input.moneda,
     cantidadCuotas: input.cantidadCuotas,
+    actualizadoEn: nowIso(),
     origenUsd: input.origenUsd,
   }
   const cuotasNuevas = generarCuotas(compra, tarjeta)
@@ -114,7 +118,7 @@ export async function pagarResumen(tarjetaId: string, periodo: string): Promise<
 
   await db.transaction('rw', db.cuotas, db.movimientos, async () => {
     await Promise.all(
-      cuotasDelPeriodo.map((c) => db.cuotas.update(c.id, { estado: 'pagada', pagadaEn })),
+      cuotasDelPeriodo.map((c) => db.cuotas.update(c.id, { estado: 'pagada', pagadaEn, actualizadoEn: pagadaEn })),
     )
     const movimiento: MovimientoTransferencia = {
       id: newId(),
@@ -128,6 +132,7 @@ export async function pagarResumen(tarjetaId: string, periodo: string): Promise<
       montoDestino: total,
       monedaDestino: tarjeta.moneda,
       creadoEn: pagadaEn,
+      actualizadoEn: pagadaEn,
     }
     await db.movimientos.add(movimiento)
   })

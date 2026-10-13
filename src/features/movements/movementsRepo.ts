@@ -14,12 +14,13 @@ export interface NuevoIngresoInput {
 }
 
 export async function crearIngreso(input: NuevoIngresoInput): Promise<void> {
-  const movimiento: MovimientoIngreso = { id: newId(), tipo: 'ingreso', creadoEn: nowIso(), ...input }
+  const ahora = nowIso()
+  const movimiento: MovimientoIngreso = { id: newId(), tipo: 'ingreso', creadoEn: ahora, actualizadoEn: ahora, ...input }
   await db.movimientos.add(movimiento)
 }
 
 export async function actualizarIngreso(id: string, input: NuevoIngresoInput): Promise<void> {
-  await db.movimientos.update(id, { tipo: 'ingreso', ...input })
+  await db.movimientos.update(id, { tipo: 'ingreso', ...input, actualizadoEn: nowIso() })
 }
 
 export interface NuevoGastoInput {
@@ -33,12 +34,13 @@ export interface NuevoGastoInput {
 }
 
 export async function crearGasto(input: NuevoGastoInput): Promise<void> {
-  const movimiento: MovimientoGasto = { id: newId(), tipo: 'gasto', creadoEn: nowIso(), ...input }
+  const ahora = nowIso()
+  const movimiento: MovimientoGasto = { id: newId(), tipo: 'gasto', creadoEn: ahora, actualizadoEn: ahora, ...input }
   await db.movimientos.add(movimiento)
 }
 
 export async function actualizarGasto(id: string, input: NuevoGastoInput): Promise<void> {
-  await db.movimientos.update(id, { tipo: 'gasto', ...input })
+  await db.movimientos.update(id, { tipo: 'gasto', ...input, actualizadoEn: nowIso() })
 }
 
 export interface NuevaTransferenciaInput {
@@ -53,10 +55,12 @@ export interface NuevaTransferenciaInput {
 }
 
 export async function crearTransferencia(input: NuevaTransferenciaInput): Promise<void> {
+  const ahora = nowIso()
   const movimiento: MovimientoTransferencia = {
     id: newId(),
     tipo: 'transferencia',
-    creadoEn: nowIso(),
+    creadoEn: ahora,
+    actualizadoEn: ahora,
     fecha: input.fecha,
     descripcion: input.descripcion,
     origen: { tipo: 'cuenta', cuentaId: input.cuentaOrigenId },
@@ -80,10 +84,19 @@ export async function actualizarTransferencia(id: string, input: NuevaTransferen
     monedaOrigen: input.monedaOrigen,
     montoDestino: input.montoDestino,
     monedaDestino: input.monedaDestino,
+    actualizadoEn: nowIso(),
   }
   await db.movimientos.update(id, cambios)
 }
 
+/** Borra el movimiento de verdad (no es un archivado) y deja una "marca" de que
+ * se borró, con la fecha. Esa marca es necesaria para sincronizar entre
+ * dispositivos: sin ella, un movimiento borrado en un equipo podría "revivir"
+ * al sincronizar con otro que todavía no se enteró del borrado. */
 export async function eliminarMovimiento(id: string): Promise<void> {
-  await db.movimientos.delete(id)
+  const eliminadoEn = nowIso()
+  await db.transaction('rw', db.movimientos, db.movimientosEliminados, async () => {
+    await db.movimientos.delete(id)
+    await db.movimientosEliminados.put({ id, eliminadoEn })
+  })
 }

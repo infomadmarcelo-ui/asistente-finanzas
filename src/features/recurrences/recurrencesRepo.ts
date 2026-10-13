@@ -35,19 +35,21 @@ export async function crearRecurrencia(input: RecurrenciaInput): Promise<void> {
     antelacionDias: 3,
   })
 
+  const ahora = nowIso()
   const recurrencia: Recurrencia = {
     id: newId(),
     ...input,
     activa: true,
     recordatorioId,
-    creadoEn: nowIso(),
+    creadoEn: ahora,
+    actualizadoEn: ahora,
   }
   await db.recurrencias.add(recurrencia)
 }
 
 export async function actualizarRecurrencia(id: string, input: RecurrenciaInput): Promise<void> {
   const actual = await db.recurrencias.get(id)
-  await db.recurrencias.update(id, input)
+  await db.recurrencias.update(id, { ...input, actualizadoEn: nowIso() })
   if (actual?.recordatorioId) {
     await actualizarRecordatorio(actual.recordatorioId, {
       titulo: tituloRecordatorio(input),
@@ -60,7 +62,7 @@ export async function actualizarRecurrencia(id: string, input: RecurrenciaInput)
 }
 
 export async function activarRecurrencia(id: string, activa: boolean): Promise<void> {
-  await db.recurrencias.update(id, { activa })
+  await db.recurrencias.update(id, { activa, actualizadoEn: nowIso() })
 }
 
 /**
@@ -82,9 +84,10 @@ export async function procesarRecurrencias(): Promise<void> {
       if (!actual || actual.ultimoPeriodoGenerado === periodo) continue
 
       if (!recurrencia.cuentaId) {
-        await db.recurrencias.update(recurrencia.id, { ultimoPeriodoGenerado: periodo })
+        await db.recurrencias.update(recurrencia.id, { ultimoPeriodoGenerado: periodo, actualizadoEn: nowIso() })
         continue
       }
+      const ahora = nowIso()
       const base = {
         id: newId(),
         fecha: fechaLocalIso(fecha),
@@ -92,14 +95,15 @@ export async function procesarRecurrencias(): Promise<void> {
         moneda: recurrencia.moneda,
         categoriaId: recurrencia.categoriaId,
         descripcion: recurrencia.concepto,
-        creadoEn: nowIso(),
+        creadoEn: ahora,
+        actualizadoEn: ahora,
       }
       const movimiento: Movimiento =
         recurrencia.tipo === 'ingreso'
           ? { ...base, tipo: 'ingreso', cuentaId: recurrencia.cuentaId }
           : { ...base, tipo: 'gasto', cuentaId: recurrencia.cuentaId }
       await db.movimientos.add(movimiento)
-      await db.recurrencias.update(recurrencia.id, { ultimoPeriodoGenerado: periodo })
+      await db.recurrencias.update(recurrencia.id, { ultimoPeriodoGenerado: periodo, actualizadoEn: ahora })
     }
   })
 }

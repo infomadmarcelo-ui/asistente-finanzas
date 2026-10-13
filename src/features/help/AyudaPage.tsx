@@ -18,12 +18,31 @@ const SECCIONES: { titulo: string; preguntas: Pregunta[] }[] = [
       {
         titulo: '¿Cómo paso mis datos a otro dispositivo, o los recupero si se rompe este?',
         respuesta:
-          'Con el backup encriptado (sección "Backup"). Exportás un archivo protegido con una contraseña que elegís vos, y lo importás en el otro dispositivo. Es también la forma de actualizar a una versión nueva de la app sin perder nada.',
+          'Para uso diario entre PC y celular, usá "Sincronizar" (ver más abajo): combina los datos de los dos sin pasar por internet. El backup encriptado (sección "Backup") es mejor para guardar una copia de seguridad o para mudar todo a un dispositivo nuevo desde cero.',
       },
       {
         titulo: '¿Qué pasa si me olvido el PIN?',
         respuesta:
           'Como no hay servidor, nadie puede resetear el PIN por vos. Si tenés un backup exportado, vas a poder reinstalar la app y restaurar tus datos con la contraseña del backup (no con el PIN).',
+      },
+    ],
+  },
+  {
+    titulo: 'Sincronizar entre dispositivos',
+    preguntas: [
+      {
+        titulo: '¿Cómo funciona?',
+        respuesta:
+          'Combina los datos de dos dispositivos (por ejemplo PC y celular) directo por la red WiFi de casa, sin pasar por internet en ningún momento. Hace falta un servidor chiquito corriendo en la PC (se arranca con "npm run sync-server" o el acceso directo que te haya dejado quien instaló la app) y, la primera vez, instalar un certificado en el celular — son pasos técnicos de una sola vez, ver sync-server/README.md.',
+      },
+      {
+        titulo: '¿Qué pasa si cargué datos distintos en cada dispositivo antes de sincronizar por primera vez?',
+        respuesta:
+          'No se pierde nada: se combinan. Si el mismo dato se editó en los dos lados, gana la edición más reciente. Si borraste un movimiento en un dispositivo, el borrado se respeta en el otro (no "revive"), salvo que lo hayas vuelto a editar ahí después de borrarlo en el otro.',
+      },
+      {
+        titulo: '¿Y si no tengo el servidor a mano, o estoy lejos de casa?',
+        respuesta: 'Para eso sigue estando el backup encriptado (sección "Backup"): sirve en cualquier momento, con o sin WiFi local.',
       },
     ],
   },

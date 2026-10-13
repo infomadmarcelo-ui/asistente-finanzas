@@ -17,6 +17,7 @@ import { MasPage } from './features/shell/MasPage'
 import { ResumenMensualPage } from './features/reports/ResumenMensualPage'
 import { OnboardingPage } from './features/onboarding/OnboardingPage'
 import { BackupPage } from './features/backup/BackupPage'
+import { SincronizarPage } from './features/sync/SincronizarPage'
 import { AyudaPage } from './features/help/AyudaPage'
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
                 <Route path="/resumen" element={<ResumenMensualPage />} />
                 <Route path="/onboarding" element={<OnboardingPage />} />
                 <Route path="/backup" element={<BackupPage />} />
+                <Route path="/sincronizar" element={<SincronizarPage />} />
                 <Route path="/ayuda" element={<AyudaPage />} />
                 <Route path="/mas" element={<MasPage />} />
               </Route>
