@@ -13,9 +13,8 @@ objShell.Run "cmd /c npm run sync-server", 0, False
 
 WScript.Sleep 1200
 
-' Se abre con tu navegador y perfil de siempre (el mismo que si tipeás la URL
-' o abrís un favorito) — así siempre cae en el mismo lugar donde están tus
-' datos reales. A propósito NO se usa "--app" (modo aplicación): ese modo
-' puede quedar con un almacenamiento separado del de tus pestañas normales.
+' Se abre específicamente con Chrome (es el navegador donde están tus datos
+' reales): aunque Windows tenga a Edge como predeterminado, "start chrome"
+' lo ignora y abre Chrome igual, con tu perfil de siempre.
 urlApp = "https://infomadmarcelo-ui.github.io/asistente-finanzas/"
-objShell.Run "cmd /c start """" """ & urlApp & """", 0, False
+objShell.Run "cmd /c start chrome " & urlApp, 0, False
