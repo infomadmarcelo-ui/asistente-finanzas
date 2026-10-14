@@ -105,9 +105,14 @@ const SECCIONES: { titulo: string; preguntas: Pregunta[] }[] = [
     titulo: 'Vehículos, inversiones y metas',
     preguntas: [
       {
+        titulo: '¿Cómo cargo combustible o un mantenimiento de mi vehículo?',
+        respuesta:
+          'Desde Movimientos, como un gasto cualquiera: elegís el vehículo en el campo "Vehículo (opcional)" y ahí aparecen "Kilometraje" y "Litros". Para un mantenimiento (cambio de aceite, frenos, etc.) completá el kilometraje y contá en la descripción qué se hizo; los litros son solo para combustible. Todo lo que cargues así se ve después en el "Historial" de la ficha del vehículo, con buscador incluido.',
+      },
+      {
         titulo: '¿Cómo calcula la app el consumo (km/L) de mi auto?',
         respuesta:
-          'Cada vez que cargás combustible, anotá el odómetro. La app compara esa carga con la anterior: los kilómetros recorridos entre las dos, divididos por los litros de esta carga.',
+          'Comparando cada carga de combustible con la anterior: los kilómetros recorridos entre las dos (por el kilometraje que cargaste en cada una), divididos por los litros de la carga más reciente.',
       },
       {
         titulo: '¿Cómo sé el progreso de una meta de ahorro?',

@@ -1,6 +1,7 @@
 import { db } from '../../db/db'
 import type { Dimension, Moneda, MovimientoGasto, MovimientoIngreso, MovimientoTransferencia } from '../../db/types'
 import { newId, nowIso } from '../../lib/id'
+import { actualizarOdometroSiCorresponde } from '../vehicles/vehiclesRepo'
 
 export interface NuevoIngresoInput {
   fecha: string
@@ -31,16 +32,29 @@ export interface NuevoGastoInput {
   categoriaId?: string
   descripcion?: string
   dimension?: Dimension
+  /** Para gastos de un vehículo (combustible, mantenimiento, o cualquier otro):
+   * litros solo tiene sentido en cargas de combustible, kilometraje sirve para
+   * cualquier gasto (sirve para armar el historial del vehículo en orden). */
+  litros?: number
+  odometro?: number
+}
+
+async function actualizarOdometroSiAplica(input: NuevoGastoInput): Promise<void> {
+  if (input.dimension?.tipo === 'vehiculo' && input.odometro != null) {
+    await actualizarOdometroSiCorresponde(input.dimension.id, input.odometro)
+  }
 }
 
 export async function crearGasto(input: NuevoGastoInput): Promise<void> {
   const ahora = nowIso()
   const movimiento: MovimientoGasto = { id: newId(), tipo: 'gasto', creadoEn: ahora, actualizadoEn: ahora, ...input }
   await db.movimientos.add(movimiento)
+  await actualizarOdometroSiAplica(input)
 }
 
 export async function actualizarGasto(id: string, input: NuevoGastoInput): Promise<void> {
   await db.movimientos.update(id, { tipo: 'gasto', ...input, actualizadoEn: nowIso() })
+  await actualizarOdometroSiAplica(input)
 }
 
 export interface NuevaTransferenciaInput {

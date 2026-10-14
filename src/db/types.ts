@@ -96,8 +96,10 @@ export interface MovimientoGasto extends MovimientoBase {
    * siempre sale directo de una cuenta (efectivo, débito, billetera).
    */
   cuentaId: string
-  /** Solo para cargas de combustible (dimension de vehículo): litros cargados y
-   * odómetro en ese momento, para calcular consumo (km/l y $/km) entre cargas. */
+  /** Para gastos de un vehículo (dimension de vehículo): el kilometraje sirve
+   * para cualquier gasto del vehículo (combustible, mantenimiento, etc.) y arma
+   * su historial en orden; los litros solo se cargan en combustible, para
+   * calcular consumo (km/l y $/km) entre cargas. */
   litros?: number
   odometro?: number
 }

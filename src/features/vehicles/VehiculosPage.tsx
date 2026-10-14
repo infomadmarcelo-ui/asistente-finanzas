@@ -1,24 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState, type FormEvent } from 'react'
 import { db } from '../../db/db'
-import type { Cuenta, Moneda, MovimientoGasto, Vehiculo } from '../../db/types'
+import type { Moneda, MovimientoGasto, Vehiculo } from '../../db/types'
 import { Money } from '../../components/Money'
 import { Button, Card, EmptyState, Field, Modal, Select, TextInput } from '../../components/ui'
-import { nombreVisibleCuenta } from '../accounts/accountsRepo'
-import { todayIso } from '../../lib/id'
 import { calcularConsumos } from './vehicleEngine'
-import {
-  actualizarVehiculo,
-  archivarVehiculo,
-  cargarCombustible,
-  crearVehiculo,
-  desarchivarVehiculo,
-  type VehiculoInput,
-} from './vehiclesRepo'
+import { actualizarVehiculo, archivarVehiculo, crearVehiculo, desarchivarVehiculo, type VehiculoInput } from './vehiclesRepo'
 
 export function VehiculosPage() {
   const todosLosVehiculos = useLiveQuery(() => db.vehiculos.toArray(), []) ?? []
-  const cuentas = useLiveQuery(async () => (await db.cuentas.toArray()).filter((c) => !c.archivada), []) ?? []
   const [modalAbierto, setModalAbierto] = useState(false)
   const [editando, setEditando] = useState<Vehiculo | null>(null)
   const [expandidoId, setExpandidoId] = useState<string | null>(null)
@@ -52,7 +42,6 @@ export function VehiculosPage() {
             <VehiculoItem
               key={v.id}
               vehiculo={v}
-              cuentas={cuentas}
               expandido={expandidoId === v.id}
               onToggle={() => setExpandidoId(expandidoId === v.id ? null : v.id)}
               onEditar={() => abrirEdicion(v)}
@@ -93,13 +82,11 @@ export function VehiculosPage() {
 
 function VehiculoItem({
   vehiculo,
-  cuentas,
   expandido,
   onToggle,
   onEditar,
 }: {
   vehiculo: Vehiculo
-  cuentas: Cuenta[]
   expandido: boolean
   onToggle: () => void
   onEditar: () => void
@@ -116,7 +103,7 @@ function VehiculoItem({
       [expandido, vehiculo.id],
     ) ?? []
 
-  const [modalCombustible, setModalCombustible] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
 
   const totalPorMoneda = useMemo(() => {
     const totales: Partial<Record<Moneda, number>> = {}
@@ -124,7 +111,19 @@ function VehiculoItem({
     return totales
   }, [movimientos])
 
-  const cargas = useMemo(() => calcularConsumos(movimientos.filter((m) => m.litros != null)), [movimientos])
+  // Las cargas de combustible se cruzan entre sí (por odómetro) para sacar consumo
+  // (km/l y $/km); el resto del historial se muestra sin esa cuenta.
+  const consumoPorId = useMemo(() => {
+    const cargas = calcularConsumos(movimientos.filter((m) => m.litros != null))
+    return new Map(cargas.map((c) => [c.movimiento.id, c]))
+  }, [movimientos])
+
+  const historial = useMemo(() => {
+    const termino = busqueda.trim().toLowerCase()
+    const ordenado = [...movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creadoEn.localeCompare(a.creadoEn))
+    if (!termino) return ordenado
+    return ordenado.filter((m) => (m.descripcion ?? '').toLowerCase().includes(termino))
+  }, [movimientos, busqueda])
 
   return (
     <Card>
@@ -154,13 +153,13 @@ function VehiculoItem({
       </div>
 
       {expandido && (
-        <div className="mt-4 space-y-4 border-t border-slate-100 pt-3 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Gastos cargados</p>
-            <Button variant="secondary" onClick={() => setModalCombustible(true)}>
-              + Cargar combustible
-            </Button>
-          </div>
+        <div className="mt-4 space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            Historial
+            <span className="ml-2 font-normal text-slate-400">
+              Para cargar combustible o un mantenimiento, usá "+ Nuevo" en Movimientos y elegí este vehículo.
+            </span>
+          </p>
 
           {movimientos.length === 0 ? (
             <p className="text-sm text-slate-400">Todavía no cargaste gastos de este vehículo.</p>
@@ -174,38 +173,41 @@ function VehiculoItem({
                 ))}
               </div>
 
-              {cargas.length > 0 && (
-                <div>
-                  <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">Cargas de combustible</p>
-                  <ul className="space-y-1 text-sm">
-                    {cargas
-                      .slice()
-                      .reverse()
-                      .map((c) => (
-                        <li key={c.movimiento.id} className="flex items-center justify-between">
-                          <span className="text-slate-500 dark:text-slate-400">
-                            {c.movimiento.fecha} · {c.movimiento.odometro?.toLocaleString('es-AR')} km · {c.movimiento.litros} L
-                          </span>
-                          <span>
-                            {c.kmPorLitro ? `${c.kmPorLitro.toFixed(1)} km/L` : '—'}
-                            {c.costoPorKm ? ` · ${c.costoPorKm.toFixed(0)} ${c.movimiento.moneda}/km` : ''}
-                          </span>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
+              <TextInput
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar en el historial por descripción…"
+              />
+
+              {historial.length === 0 ? (
+                <p className="text-sm text-slate-400">No hay nada que coincida con esa búsqueda.</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {historial.map((m) => {
+                    const consumo = consumoPorId.get(m.id)
+                    return (
+                      <li key={m.id} className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate">{m.descripcion || '(Sin descripción)'}</p>
+                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                            {m.fecha}
+                            {m.odometro != null && ` · ${m.odometro.toLocaleString('es-AR')} km`}
+                            {m.litros != null && ` · ${m.litros} L`}
+                            {consumo?.kmPorLitro != null && ` · ${consumo.kmPorLitro.toFixed(1)} km/L`}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-medium">
+                          <Money monto={m.monto} moneda={m.moneda} />
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
               )}
             </>
           )}
         </div>
       )}
-
-      <CargarCombustibleModal
-        open={modalCombustible}
-        vehiculo={vehiculo}
-        cuentas={cuentas}
-        onClose={() => setModalCombustible(false)}
-      />
     </Card>
   )
 }
@@ -302,94 +304,3 @@ function VehiculoFormModal({ open, vehiculo, onClose }: { open: boolean; vehicul
   )
 }
 
-function CargarCombustibleModal({
-  open,
-  vehiculo,
-  cuentas,
-  onClose,
-}: {
-  open: boolean
-  vehiculo: Vehiculo
-  cuentas: Cuenta[]
-  onClose: () => void
-}) {
-  const [fecha, setFecha] = useState(todayIso())
-  const [monto, setMonto] = useState('')
-  const [litros, setLitros] = useState('')
-  const [odometro, setOdometro] = useState(String(vehiculo.odometroActual))
-  const [cuentaId, setCuentaId] = useState(cuentas[0]?.id ?? '')
-  const [guardando, setGuardando] = useState(false)
-
-  const [estabaAbierto, setEstabaAbierto] = useState(open)
-  if (open !== estabaAbierto) {
-    setEstabaAbierto(open)
-    if (open) {
-      setFecha(todayIso())
-      setMonto('')
-      setLitros('')
-      setOdometro(String(vehiculo.odometroActual))
-      setCuentaId(cuentas[0]?.id ?? '')
-    }
-  }
-
-  const cuenta = cuentas.find((c) => c.id === cuentaId)
-
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (!cuenta || !monto || !litros) return
-    setGuardando(true)
-    try {
-      await cargarCombustible({
-        vehiculoId: vehiculo.id,
-        fecha,
-        monto: Number(monto),
-        moneda: cuenta.moneda,
-        litros: Number(litros),
-        odometro: Number(odometro) || vehiculo.odometroActual,
-        cuentaId,
-      })
-      onClose()
-    } finally {
-      setGuardando(false)
-    }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Cargar combustible">
-      {cuentas.length === 0 ? (
-        <p className="text-sm text-slate-500">Primero creá una cuenta para poder pagar la carga.</p>
-      ) : (
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Fecha">
-              <TextInput type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-            </Field>
-            <Field label="Monto">
-              <TextInput type="number" step="0.01" autoFocus value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0.00" />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Litros">
-              <TextInput type="number" step="0.01" value={litros} onChange={(e) => setLitros(e.target.value)} />
-            </Field>
-            <Field label="Odómetro (km)">
-              <TextInput type="number" value={odometro} onChange={(e) => setOdometro(e.target.value)} />
-            </Field>
-          </div>
-          <Field label="Pagado con">
-            <Select value={cuentaId} onChange={(e) => setCuentaId(e.target.value)}>
-              {cuentas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {nombreVisibleCuenta(c).titulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Button type="submit" disabled={guardando} className="w-full">
-            {guardando ? 'Guardando…' : 'Registrar carga'}
-          </Button>
-        </form>
-      )}
-    </Modal>
-  )
-}

@@ -381,6 +381,8 @@ function GastoForm({
   const [categoriaId, setCategoriaId] = useState(existing?.categoriaId ?? categorias[0]?.id ?? '')
   const [descripcion, setDescripcion] = useState(existing?.descripcion ?? '')
   const [vehiculoId, setVehiculoId] = useState(existing?.dimension?.tipo === 'vehiculo' ? existing.dimension.id : '')
+  const [odometro, setOdometro] = useState(existing?.odometro != null ? String(existing.odometro) : '')
+  const [litros, setLitros] = useState(existing?.litros != null ? String(existing.litros) : '')
   const [guardando, setGuardando] = useState(false)
 
   const cuenta = cuentas.find((c) => c.id === cuentaId)
@@ -398,6 +400,8 @@ function GastoForm({
         categoriaId: categoriaId || undefined,
         descripcion: descripcion.trim() || undefined,
         dimension: vehiculoId ? ({ tipo: 'vehiculo', id: vehiculoId } as const) : undefined,
+        odometro: vehiculoId && odometro ? Number(odometro) : undefined,
+        litros: vehiculoId && litros ? Number(litros) : undefined,
       }
       if (existing) {
         await actualizarGasto(existing.id, input)
@@ -440,20 +444,41 @@ function GastoForm({
         </Select>
       </Field>
       {vehiculos.length > 0 && (
-        <Field label="Vehículo (opcional)">
-          <Select value={vehiculoId} onChange={(e) => setVehiculoId(e.target.value)}>
-            <option value="">Ninguno</option>
-            {vehiculos.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.marca} {v.modelo}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <>
+          <Field label="Vehículo (opcional)">
+            <Select value={vehiculoId} onChange={(e) => setVehiculoId(e.target.value)}>
+              <option value="">Ninguno</option>
+              {vehiculos.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.marca} {v.modelo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {vehiculoId && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Kilometraje (opcional)">
+                <TextInput type="number" value={odometro} onChange={(e) => setOdometro(e.target.value)} placeholder="Ej: 210000" />
+              </Field>
+              <Field label="Litros (solo si es combustible)">
+                <TextInput type="number" step="0.01" value={litros} onChange={(e) => setLitros(e.target.value)} />
+              </Field>
+            </div>
+          )}
+        </>
       )}
       <Field label="Descripción (opcional)">
-        <TextInput value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+        <TextInput
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          placeholder={vehiculoId ? 'Ej: Cambio de aceite, filtro de aceite y de nafta' : undefined}
+        />
       </Field>
+      {vehiculoId && (
+        <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
+          Si es un mantenimiento, contá acá qué se hizo — esto arma el historial del vehículo.
+        </p>
+      )}
       <Button type="submit" disabled={guardando} className="w-full">
         {guardando ? 'Guardando…' : existing ? 'Guardar cambios' : 'Registrar gasto'}
       </Button>

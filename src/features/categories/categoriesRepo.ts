@@ -34,6 +34,8 @@ const CATEGORIAS_POR_DEFECTO: (CategoriaInput & { id: string })[] = [
   { id: 'default-servicios', nombre: 'Servicios (luz, gas, agua, internet)', tipo: 'gasto', esFijo: true },
   { id: 'default-comida', nombre: 'Comida', tipo: 'gasto', esFijo: false },
   { id: 'default-transporte', nombre: 'Transporte', tipo: 'gasto', esFijo: false },
+  { id: 'default-combustible', nombre: 'Combustible', tipo: 'gasto', esFijo: false },
+  { id: 'default-mantenimiento-vehiculo', nombre: 'Mantenimiento de vehículo', tipo: 'gasto', esFijo: false },
   { id: 'default-salud', nombre: 'Salud', tipo: 'gasto', esFijo: false },
   { id: 'default-educacion', nombre: 'Educación', tipo: 'gasto', esFijo: false },
   { id: 'default-entretenimiento', nombre: 'Entretenimiento', tipo: 'gasto', esFijo: false },
