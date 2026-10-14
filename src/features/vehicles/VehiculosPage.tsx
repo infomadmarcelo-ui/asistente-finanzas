@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState, type FormEvent } from 'react'
 import { db } from '../../db/db'
-import type { Moneda, MovimientoGasto, Vehiculo } from '../../db/types'
+import type { CompraCuotas, Moneda, MovimientoGasto, Vehiculo } from '../../db/types'
 import { Money } from '../../components/Money'
 import { Button, Card, EmptyState, Field, Modal, Select, TextInput } from '../../components/ui'
 import { calcularConsumos } from './vehicleEngine'
@@ -103,13 +103,59 @@ function VehiculoItem({
       [expandido, vehiculo.id],
     ) ?? []
 
+  // Una compra en cuotas pagada con tarjeta (ej: un repuesto) también puede
+  // etiquetarse con un vehículo, igual que un gasto común — entra al mismo historial.
+  const comprasCuotas =
+    useLiveQuery(
+      async () => {
+        if (!expandido) return [] as CompraCuotas[]
+        const todas = await db.comprasCuotas.toArray()
+        return todas.filter((c) => c.dimension?.tipo === 'vehiculo' && c.dimension.id === vehiculo.id)
+      },
+      [expandido, vehiculo.id],
+    ) ?? []
+
   const [busqueda, setBusqueda] = useState('')
+
+  interface ItemHistorial {
+    id: string
+    fecha: string
+    creadoEn: string
+    descripcion: string
+    monto: number
+    moneda: Moneda
+    odometro?: number
+    litros?: number
+  }
+
+  const itemsHistorial = useMemo<ItemHistorial[]>(() => {
+    const deMovimientos = movimientos.map((m) => ({
+      id: m.id,
+      fecha: m.fecha,
+      creadoEn: m.creadoEn,
+      descripcion: m.descripcion ?? '(Sin descripción)',
+      monto: m.monto,
+      moneda: m.moneda,
+      odometro: m.odometro,
+      litros: m.litros,
+    }))
+    const deCompras = comprasCuotas.map((c) => ({
+      id: c.id,
+      fecha: c.fecha,
+      creadoEn: c.creadoEn,
+      descripcion: c.cantidadCuotas > 1 ? `${c.descripcion} (en ${c.cantidadCuotas} cuotas)` : c.descripcion,
+      monto: c.montoTotal,
+      moneda: c.moneda,
+      odometro: c.odometro,
+    }))
+    return [...deMovimientos, ...deCompras]
+  }, [movimientos, comprasCuotas])
 
   const totalPorMoneda = useMemo(() => {
     const totales: Partial<Record<Moneda, number>> = {}
-    for (const m of movimientos) totales[m.moneda] = (totales[m.moneda] ?? 0) + m.monto
+    for (const item of itemsHistorial) totales[item.moneda] = (totales[item.moneda] ?? 0) + item.monto
     return totales
-  }, [movimientos])
+  }, [itemsHistorial])
 
   // Las cargas de combustible se cruzan entre sí (por odómetro) para sacar consumo
   // (km/l y $/km); el resto del historial se muestra sin esa cuenta.
@@ -120,10 +166,10 @@ function VehiculoItem({
 
   const historial = useMemo(() => {
     const termino = busqueda.trim().toLowerCase()
-    const ordenado = [...movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creadoEn.localeCompare(a.creadoEn))
+    const ordenado = [...itemsHistorial].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creadoEn.localeCompare(a.creadoEn))
     if (!termino) return ordenado
-    return ordenado.filter((m) => (m.descripcion ?? '').toLowerCase().includes(termino))
-  }, [movimientos, busqueda])
+    return ordenado.filter((item) => item.descripcion.toLowerCase().includes(termino))
+  }, [itemsHistorial, busqueda])
 
   return (
     <Card>
@@ -157,11 +203,11 @@ function VehiculoItem({
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
             Historial
             <span className="ml-2 font-normal text-slate-400">
-              Para cargar combustible o un mantenimiento, usá "+ Nuevo" en Movimientos y elegí este vehículo.
+              Para cargar combustible, un mantenimiento o una compra en cuotas, usá "+ Nuevo" en Movimientos y elegí este vehículo.
             </span>
           </p>
 
-          {movimientos.length === 0 ? (
+          {itemsHistorial.length === 0 ? (
             <p className="text-sm text-slate-400">Todavía no cargaste gastos de este vehículo.</p>
           ) : (
             <>

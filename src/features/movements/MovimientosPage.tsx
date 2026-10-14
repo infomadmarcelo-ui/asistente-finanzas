@@ -1,12 +1,22 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { db } from '../../db/db'
-import type { Categoria, Cuenta, Moneda, Movimiento, MovimientoGasto, MovimientoIngreso, MovimientoTransferencia } from '../../db/types'
+import type {
+  Categoria,
+  Cuenta,
+  Moneda,
+  Movimiento,
+  MovimientoGasto,
+  MovimientoIngreso,
+  MovimientoTransferencia,
+} from '../../db/types'
 import { Money } from '../../components/Money'
 import { Button, Card, EmptyState, Field, Modal, Select, TextInput } from '../../components/ui'
 import { useConfirm } from '../../components/ConfirmProvider'
 import { nombreVisibleCuenta } from '../accounts/accountsRepo'
 import { tocaCuenta } from '../accounts/useMovimientosCuenta'
+import { crearCompraCuotas } from '../cards/cardsRepo'
+import { useCotizacionOficial } from '../quotes/useCotizacion'
 import { todayIso } from '../../lib/id'
 import {
   actualizarGasto,
@@ -383,38 +393,96 @@ function GastoForm({
   onDone: () => void
 }) {
   const vehiculos = useLiveQuery(async () => (await db.vehiculos.toArray()).filter((v) => !v.archivado), []) ?? []
+  // Editar un gasto ya cargado solo corrige ese gasto (sigue siendo un gasto de
+  // cuenta): pasar a pagarlo con tarjeta sería, en los hechos, borrar esto y crear
+  // una compra en cuotas nueva. Por eso la opción de tarjeta solo aparece al cargar.
+  const tarjetas =
+    useLiveQuery(async () => (existing ? [] : (await db.tarjetas.toArray()).filter((t) => !t.archivada)), [!!existing]) ?? []
+  const cotizacionOficial = useCotizacionOficial()
+
   const [fecha, setFecha] = useState(existing?.fecha ?? todayIso())
-  const [cuentaId, setCuentaId] = useState(existing?.cuentaId ?? cuentas[0]?.id ?? '')
+  const [medioPago, setMedioPago] = useState(existing ? `cuenta:${existing.cuentaId}` : cuentas[0] ? `cuenta:${cuentas[0].id}` : '')
+
+  // Cuentas y tarjetas se cargan de forma asíncrona desde IndexedDB: si el modal ya
+  // estaba montado cuando todavía no habían llegado, hay que completar la selección
+  // apenas estén disponibles (si no, el submit queda bloqueado en silencio).
+  useEffect(() => {
+    if (medioPago || existing) return
+    if (cuentas[0]) setMedioPago(`cuenta:${cuentas[0].id}`)
+    else if (tarjetas[0]) setMedioPago(`tarjeta:${tarjetas[0].id}`)
+  }, [cuentas, tarjetas, medioPago, existing])
+
   const [monto, setMonto] = useState(existing ? String(existing.monto) : '')
+  const [cuotas, setCuotas] = useState('1')
   const [categoriaId, setCategoriaId] = useState(existing?.categoriaId ?? categorias[0]?.id ?? '')
   const [descripcion, setDescripcion] = useState(existing?.descripcion ?? '')
   const [vehiculoId, setVehiculoId] = useState(existing?.dimension?.tipo === 'vehiculo' ? existing.dimension.id : '')
   const [odometro, setOdometro] = useState(existing?.odometro != null ? String(existing.odometro) : '')
   const [litros, setLitros] = useState(existing?.litros != null ? String(existing.litros) : '')
+  const [usaUsd, setUsaUsd] = useState(false)
+  const [montoUsd, setMontoUsd] = useState('')
+  const [cotizacionUsd, setCotizacionUsd] = useState(String(cotizacionOficial ?? ''))
+  const [recargoPct, setRecargoPct] = useState('30')
   const [guardando, setGuardando] = useState(false)
 
-  const cuenta = cuentas.find((c) => c.id === cuentaId)
+  const [tipoPago, idPago] = medioPago.split(':')
+  const cuenta = tipoPago === 'cuenta' ? cuentas.find((c) => c.id === idPago) : undefined
+  const tarjeta = tipoPago === 'tarjeta' ? tarjetas.find((t) => t.id === idPago) : undefined
+  const mostrarUsd = tipoPago === 'tarjeta' && usaUsd && tarjeta?.moneda === 'ARS'
+
+  // Igual que en la carga de compras en cuotas de Tarjetas: mientras se carga en
+  // USD, el monto (en la moneda de la tarjeta) se recalcula solo.
+  useEffect(() => {
+    if (!mostrarUsd) return
+    const usd = Number(montoUsd) || 0
+    const cot = Number(cotizacionUsd) || 0
+    const recargo = Number(recargoPct) || 0
+    const total = usd * cot * (1 + recargo / 100)
+    setMonto(total > 0 ? String(Math.round(total * 100) / 100) : '')
+  }, [mostrarUsd, montoUsd, cotizacionUsd, recargoPct])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!cuenta || !monto) return
+    if (!monto) return
     setGuardando(true)
     try {
-      const input = {
-        fecha,
-        monto: Number(monto),
-        moneda: cuenta.moneda,
-        cuentaId,
-        categoriaId: categoriaId || undefined,
-        descripcion: descripcion.trim() || undefined,
-        dimension: vehiculoId ? ({ tipo: 'vehiculo', id: vehiculoId } as const) : undefined,
-        odometro: vehiculoId && odometro ? Number(odometro) : undefined,
-        litros: vehiculoId && litros ? Number(litros) : undefined,
-      }
-      if (existing) {
-        await actualizarGasto(existing.id, input)
+      const dimension = vehiculoId ? ({ tipo: 'vehiculo', id: vehiculoId } as const) : undefined
+      const odometroNum = vehiculoId && odometro ? Number(odometro) : undefined
+
+      if (tipoPago === 'tarjeta') {
+        if (!tarjeta || !descripcion.trim()) return
+        await crearCompraCuotas({
+          tarjetaId: tarjeta.id,
+          fecha,
+          descripcion: descripcion.trim(),
+          categoriaId: categoriaId || undefined,
+          montoTotal: Number(monto),
+          moneda: tarjeta.moneda,
+          cantidadCuotas: Math.max(1, Number(cuotas) || 1),
+          origenUsd: mostrarUsd
+            ? { montoUsd: Number(montoUsd) || 0, cotizacion: Number(cotizacionUsd) || 0, recargoPct: Number(recargoPct) || 0 }
+            : undefined,
+          dimension,
+          odometro: odometroNum,
+        })
       } else {
-        await crearGasto(input)
+        if (!cuenta) return
+        const input = {
+          fecha,
+          monto: Number(monto),
+          moneda: cuenta.moneda,
+          cuentaId: cuenta.id,
+          categoriaId: categoriaId || undefined,
+          descripcion: descripcion.trim() || undefined,
+          dimension,
+          odometro: odometroNum,
+          litros: vehiculoId && litros ? Number(litros) : undefined,
+        }
+        if (existing) {
+          await actualizarGasto(existing.id, input)
+        } else {
+          await crearGasto(input)
+        }
       }
       onDone()
     } finally {
@@ -429,18 +497,75 @@ function GastoForm({
           <TextInput type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </Field>
         <Field label="Monto">
-          <TextInput type="number" step="0.01" autoFocus value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0.00" />
+          <TextInput
+            type="number"
+            step="0.01"
+            autoFocus
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+            placeholder="0.00"
+            disabled={mostrarUsd}
+          />
         </Field>
       </div>
-      <Field label="Cuenta">
-        <Select value={cuentaId} onChange={(e) => setCuentaId(e.target.value)}>
-          {cuentas.map((c) => (
-            <option key={c.id} value={c.id}>
-              {opcionCuenta(c)}
-            </option>
-          ))}
+      <Field label="Pagado con">
+        <Select value={medioPago} onChange={(e) => setMedioPago(e.target.value)}>
+          {cuentas.length > 0 && (
+            <optgroup label="Cuentas">
+              {cuentas.map((c) => (
+                <option key={c.id} value={`cuenta:${c.id}`}>
+                  {opcionCuenta(c)}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {tarjetas.length > 0 && (
+            <optgroup label="Tarjetas">
+              {tarjetas.map((t) => (
+                <option key={t.id} value={`tarjeta:${t.id}`}>
+                  {t.nombre}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </Select>
       </Field>
+      {tipoPago === 'tarjeta' && (
+        <>
+          <Field label="Cuotas">
+            <TextInput type="number" min={1} value={cuotas} onChange={(e) => setCuotas(e.target.value)} />
+          </Field>
+          {tarjeta?.moneda === 'ARS' && (
+            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <input type="checkbox" checked={usaUsd} onChange={(e) => setUsaUsd(e.target.checked)} className="h-4 w-4" />
+              Es un gasto en dólares (ej: suscripción del exterior)
+            </label>
+          )}
+          {mostrarUsd && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Monto en USD">
+                  <TextInput type="number" step="0.01" value={montoUsd} onChange={(e) => setMontoUsd(e.target.value)} placeholder="0.00" />
+                </Field>
+                <Field label="Cotización del dólar">
+                  <TextInput type="number" step="0.01" value={cotizacionUsd} onChange={(e) => setCotizacionUsd(e.target.value)} />
+                </Field>
+              </div>
+              <Field label="% de recargo total (Ganancias + impuestos)">
+                <TextInput type="number" step="0.01" value={recargoPct} onChange={(e) => setRecargoPct(e.target.value)} />
+              </Field>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Hoy el recargo por "dólar tarjeta" es 30% de percepción a cuenta de Ganancias sobre el dólar oficial. Si es un
+                servicio digital del exterior puede sumar 21% de IVA — ajustá el % según corresponda (el viejo Impuesto PAÍS ya
+                no existe). Monto total en pesos:
+              </p>
+              <p className="text-sm font-semibold">
+                <Money monto={Number(monto) || 0} moneda="ARS" />
+              </p>
+            </>
+          )}
+        </>
+      )}
       <Field label="Categoría">
         <Select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
           <option value="">Sin categoría</option>
@@ -468,27 +593,29 @@ function GastoForm({
               <Field label="Kilometraje (opcional)">
                 <TextInput type="number" value={odometro} onChange={(e) => setOdometro(e.target.value)} placeholder="Ej: 210000" />
               </Field>
-              <Field label="Litros (solo si es combustible)">
-                <TextInput type="number" step="0.01" value={litros} onChange={(e) => setLitros(e.target.value)} />
-              </Field>
+              {tipoPago === 'cuenta' && (
+                <Field label="Litros (solo si es combustible)">
+                  <TextInput type="number" step="0.01" value={litros} onChange={(e) => setLitros(e.target.value)} />
+                </Field>
+              )}
             </div>
           )}
         </>
       )}
-      <Field label="Descripción (opcional)">
+      <Field label={tipoPago === 'tarjeta' ? 'Qué compraste' : 'Descripción (opcional)'}>
         <TextInput
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value)}
-          placeholder={vehiculoId ? 'Ej: Cambio de aceite, filtro de aceite y de nafta' : undefined}
+          placeholder={vehiculoId ? 'Ej: Cambio de aceite, filtro de aceite y de nafta' : tipoPago === 'tarjeta' ? 'Ej: Radiador' : undefined}
         />
       </Field>
       {vehiculoId && (
         <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
-          Si es un mantenimiento, contá acá qué se hizo — esto arma el historial del vehículo.
+          Si es un mantenimiento o una compra, contá acá qué se hizo — esto arma el historial del vehículo.
         </p>
       )}
       <Button type="submit" disabled={guardando} className="w-full">
-        {guardando ? 'Guardando…' : existing ? 'Guardar cambios' : 'Registrar gasto'}
+        {guardando ? 'Guardando…' : existing ? 'Guardar cambios' : tipoPago === 'tarjeta' ? 'Registrar compra' : 'Registrar gasto'}
       </Button>
     </form>
   )

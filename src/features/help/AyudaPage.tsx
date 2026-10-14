@@ -62,7 +62,7 @@ const SECCIONES: { titulo: string; preguntas: Pregunta[] }[] = [
       {
         titulo: '¿Cómo cargo una compra en cuotas?',
         respuesta:
-          'Desde Tarjetas, "+ Compra en cuotas": ponés qué compraste, el monto total y en cuántas cuotas. La app arma sola el cronograma completo — no hace falta cargar cuota por cuota. Si la pagaste en un pago, dejá "Cuotas" en 1.',
+          'Desde Movimientos, "+ Nuevo" → Gasto: en "Pagado con" elegís la tarjeta (en vez de una cuenta) y aparece "Cuotas". Ponés qué compraste, el monto total y en cuántas cuotas, y la app arma sola el cronograma completo — no hace falta cargar cuota por cuota. Si la pagaste en un pago, dejá "Cuotas" en 1.',
       },
     ],
   },

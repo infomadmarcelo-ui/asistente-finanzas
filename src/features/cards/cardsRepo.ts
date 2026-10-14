@@ -1,6 +1,7 @@
 import { db } from '../../db/db'
-import type { CompraCuotas, Moneda, MovimientoTransferencia, TarjetaCredito } from '../../db/types'
+import type { CompraCuotas, Dimension, Moneda, MovimientoTransferencia, TarjetaCredito } from '../../db/types'
 import { newId, nowIso, todayIso } from '../../lib/id'
+import { actualizarOdometroSiCorresponde } from '../vehicles/vehiclesRepo'
 import { generarCuotas } from './cardEngine'
 
 export interface NuevaTarjetaInput {
@@ -35,6 +36,8 @@ export interface NuevaCompraCuotasInput {
   moneda: CompraCuotas['moneda']
   cantidadCuotas: number
   origenUsd?: { montoUsd: number; cotizacion: number; recargoPct: number }
+  dimension?: Dimension
+  odometro?: number
 }
 
 export async function crearCompraCuotas(input: NuevaCompraCuotasInput): Promise<void> {
@@ -54,6 +57,8 @@ export async function crearCompraCuotas(input: NuevaCompraCuotasInput): Promise<
     creadoEn: ahora,
     actualizadoEn: ahora,
     origenUsd: input.origenUsd,
+    dimension: input.dimension,
+    odometro: input.odometro,
   }
   const cuotas = generarCuotas(compra, tarjeta)
 
@@ -61,6 +66,9 @@ export async function crearCompraCuotas(input: NuevaCompraCuotasInput): Promise<
     await db.comprasCuotas.add(compra)
     await db.cuotas.bulkAdd(cuotas)
   })
+  if (input.dimension?.tipo === 'vehiculo' && input.odometro != null) {
+    await actualizarOdometroSiCorresponde(input.dimension.id, input.odometro)
+  }
 }
 
 /** Si alguna cuota de la compra ya está pagada: editarla va a rehacer todo el
@@ -89,6 +97,10 @@ export async function actualizarCompraCuotas(id: string, input: NuevaCompraCuota
     cantidadCuotas: input.cantidadCuotas,
     actualizadoEn: nowIso(),
     origenUsd: input.origenUsd,
+    // Si quien llama no toca estos dos (ej: el modal de edición en Tarjetas, que no
+    // los conoce), se preserva lo que ya tenía la compra en vez de borrarlo.
+    dimension: input.dimension ?? compraExistente.dimension,
+    odometro: input.odometro ?? compraExistente.odometro,
   }
   const cuotasNuevas = generarCuotas(compra, tarjeta)
 
@@ -97,6 +109,9 @@ export async function actualizarCompraCuotas(id: string, input: NuevaCompraCuota
     await db.comprasCuotas.put(compra)
     await db.cuotas.bulkAdd(cuotasNuevas)
   })
+  if (compra.dimension?.tipo === 'vehiculo' && compra.odometro != null) {
+    await actualizarOdometroSiCorresponde(compra.dimension.id, compra.odometro)
+  }
 }
 
 /** Marca como pagadas todas las cuotas de una tarjeta que caen en un período (resumen) y

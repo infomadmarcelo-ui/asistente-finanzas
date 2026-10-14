@@ -148,6 +148,11 @@ export interface CompraCuotas {
     cotizacion: number
     recargoPct: number
   }
+  /** Igual que en los gastos comunes: etiqueta la compra con un vehículo y,
+   * opcionalmente, el kilometraje — para que entre en su historial (ej: un
+   * repuesto o un arreglo pagado en cuotas). */
+  dimension?: Dimension
+  odometro?: number
 }
 
 export type EstadoCuota = 'pendiente' | 'pagada'

@@ -43,11 +43,6 @@ export function TarjetasPage() {
     setModalTarjeta(true)
   }
 
-  function abrirNuevaCompra() {
-    setCompraEditando(null)
-    setModalCompra(true)
-  }
-
   function abrirEdicionCompra(compraId: string) {
     const compra = compras.find((c) => c.id === compraId)
     if (compra) {
@@ -60,15 +55,13 @@ export function TarjetasPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Tarjetas</h1>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={abrirNuevaTarjeta}>
-            + Tarjeta
-          </Button>
-          <Button onClick={abrirNuevaCompra} disabled={tarjetas.length === 0}>
-            + Compra en cuotas
-          </Button>
-        </div>
+        <Button variant="secondary" onClick={abrirNuevaTarjeta}>
+          + Tarjeta
+        </Button>
       </div>
+      <p className="-mt-2 text-sm text-slate-500 dark:text-slate-400">
+        Para cargar una compra en cuotas, usá "+ Nuevo" en Movimientos y elegí la tarjeta como medio de pago.
+      </p>
 
       {tarjetas.length === 0 ? (
         <EmptyState icon="💳" title="Todavía no cargaste tarjetas" description="Agregá tu tarjeta con su límite, día de cierre y día de vencimiento." />
