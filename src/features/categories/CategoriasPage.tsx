@@ -11,10 +11,11 @@ export function CategoriasPage() {
   const [categoriaEditando, setCategoriaEditando] = useState<Categoria | null>(null)
   const [verArchivadas, setVerArchivadas] = useState(false)
 
+  const porNombre = (a: Categoria, b: Categoria) => a.nombre.localeCompare(b.nombre, 'es')
   const categorias = todasLasCategorias.filter((c) => !c.archivada)
-  const archivadas = todasLasCategorias.filter((c) => c.archivada)
-  const ingresos = categorias.filter((c) => c.tipo === 'ingreso')
-  const gastos = categorias.filter((c) => c.tipo === 'gasto')
+  const archivadas = todasLasCategorias.filter((c) => c.archivada).sort(porNombre)
+  const ingresos = categorias.filter((c) => c.tipo === 'ingreso').sort(porNombre)
+  const gastos = categorias.filter((c) => c.tipo === 'gasto').sort(porNombre)
 
   function abrirEdicion(c: Categoria) {
     setCategoriaEditando(c)

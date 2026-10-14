@@ -342,7 +342,14 @@ function CompraCuotasFormModal({
   const esEdicion = !!compra
   const confirmar = useConfirm()
   const cotizacionOficial = useCotizacionOficial()
-  const categorias = useLiveQuery(async () => (await db.categorias.toArray()).filter((c) => !c.archivada && c.tipo === 'gasto'), []) ?? []
+  const categorias =
+    useLiveQuery(
+      async () =>
+        (await db.categorias.toArray())
+          .filter((c) => !c.archivada && c.tipo === 'gasto')
+          .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+      [],
+    ) ?? []
   const [tarjetaId, setTarjetaId] = useState(compra?.tarjetaId ?? tarjetas[0]?.id ?? '')
   const [fecha, setFecha] = useState(compra?.fecha ?? todayIso())
   const [descripcion, setDescripcion] = useState(compra?.descripcion ?? '')

@@ -48,6 +48,14 @@ export function MovimientosPage() {
   const cuentas = useMemo(() => todasLasCuentas.filter((c) => !c.archivada), [todasLasCuentas])
   const cuentaPorId = useMemo(() => new Map(todasLasCuentas.map((c) => [c.id, c])), [todasLasCuentas])
   const categoriaPorId = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias])
+  // Para cargar o editar un movimiento solo tiene sentido elegir entre las categorías
+  // activas (no las archivadas), y en orden alfabético para encontrarlas más rápido.
+  // El filtro de búsqueda de arriba sí usa todas (`categorias`), para poder filtrar
+  // movimientos viejos aunque su categoría ya esté archivada.
+  const categoriasActivas = useMemo(
+    () => categorias.filter((c) => !c.archivada).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+    [categorias],
+  )
 
   const hayFiltrosActivos = !!(busqueda || filtroTipo !== 'todos' || filtroCuentaId || filtroCategoriaId || desde || hasta)
 
@@ -132,12 +140,12 @@ export function MovimientosPage() {
         </>
       )}
 
-      <NuevoMovimientoModal open={modalAbierto} onClose={() => setModalAbierto(false)} cuentas={cuentas} categorias={categorias} />
+      <NuevoMovimientoModal open={modalAbierto} onClose={() => setModalAbierto(false)} cuentas={cuentas} categorias={categoriasActivas} />
       <EditarMovimientoModal
         movimiento={movimientoEditando}
         onClose={() => setMovimientoEditando(null)}
         cuentas={cuentas}
-        categorias={categorias}
+        categorias={categoriasActivas}
       />
     </div>
   )

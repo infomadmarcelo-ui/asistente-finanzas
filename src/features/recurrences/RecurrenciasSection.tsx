@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { db } from '../../db/db'
 import type { Cuenta, Moneda, Recurrencia } from '../../db/types'
 import { Button, Card, EmptyState, Field, Modal, Select, TextInput } from '../../components/ui'
@@ -135,7 +135,10 @@ function RecurrenciaFormModal({
     }
   }
 
-  const categorias = categoriasTodas.filter((c) => c.tipo === tipo)
+  const categorias = useMemo(
+    () => categoriasTodas.filter((c) => c.tipo === tipo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+    [categoriasTodas, tipo],
+  )
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()

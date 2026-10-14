@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { procesarRecurrencias } from '../recurrences/recurrencesRepo'
 import { actualizarCotizacionSiEstaVieja } from '../quotes/useCotizacion'
 import { sembrarCategoriasPorDefecto } from '../categories/categoriesRepo'
@@ -70,14 +70,6 @@ export function Layout() {
       </nav>
 
       <main className="relative flex-1 overflow-y-auto pb-20 md:pb-0">
-        <Link
-          to="/ayuda"
-          title="Ayuda"
-          aria-label="Ayuda"
-          className="fixed right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 hover:text-indigo-600 md:right-6 md:top-6 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-800"
-        >
-          ?
-        </Link>
         <div className="mx-auto w-full max-w-3xl px-4 py-6">
           <Outlet />
         </div>
